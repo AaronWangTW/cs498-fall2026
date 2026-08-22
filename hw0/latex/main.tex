@@ -1,0 +1,131 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\newcommand{\CourseName}{CS 498: Machine Perception}
+\newcommand{\Term}{Fall 2026}
+\newcommand{\HomeworkNumber}{HW0}
+\newcommand{\HomeworkTitle}{Perspective, Homography, and Stereo}
+\newcommand{\CourseWeight}{10\%}
+\newcommand{\ReleaseDate}{September 2, 2026}
+\newcommand{\DueDate}{September 11, 2026 at 11:59 p.m. America/Chicago}
+\newcommand{\task}[3]{\paragraph{Task #1: #2 [#3 points]}}
+
+\definecolor{codegray}{RGB}{245,245,245}
+\lstset{basicstyle=\ttfamily\small,backgroundcolor=\color{codegray},breaklines=true,frame=single,showstringspaces=false}
+
+\title{\CourseName\\\HomeworkNumber: \HomeworkTitle}
+\author{\Term}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Course weight & \CourseWeight \\
+Release & \ReleaseDate \\
+Due & \DueDate \\
+Work mode & Individual \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Overview}
+This homework connects planar projective geometry, full camera projection, and
+dense stereo. Students first reason about a planar tennis court, estimate and
+apply a homography, recover a camera projection matrix from 2D--3D
+correspondences, and project a simple mesh into the scene. They then rectify a
+stereo pair and implement window-based disparity estimation.
+
+\paragraph{Dataset note.}
+The final tennis-court image, landmarks, dimensions, calibration, and insertion
+target will be included in the released dataset bundle.
+
+\section{Learning Objectives}
+Students will be able to:
+\begin{enumerate}[label=\arabic*.]
+  \item formulate homogeneous-coordinate constraints for planar and camera projection;
+  \item estimate homography and projection matrices with direct linear transforms;
+  \item perform inverse image warping and alpha compositing;
+  \item explain rectification, disparity, depth, and the effect of intrinsic scaling;
+  \item implement and evaluate sum-of-squared-differences stereo matching.
+\end{enumerate}
+
+\section{Setup}
+From the \texttt{hw0/} directory, create an isolated environment and run:
+\begin{lstlisting}[language=bash]
+python -m pip install -e ".[dev]"
+cs498-hw0 check
+pytest
+\end{lstlisting}
+The starter API is in \texttt{src/cs498\_hw0/}. Keep its public function
+signatures unchanged so the tests and grading tools can import your work.
+
+\section{Tasks}
+\task{0}{Environment and data check}{0}
+Run the environment check, confirm the tennis-court assets are present, and
+record the supplied coordinate conventions.
+
+\task{1}{Court coordinates and homography}{15}
+Define the tennis-court plane coordinates and implement normalized DLT to
+estimate the homography from court coordinates to image coordinates.
+
+\task{2}{Inverse warping and compositing}{20}
+Implement inverse image warping and alpha compositing. Place the supplied
+graphic or texture at the instructed metric location on the court.
+
+\task{3}{Camera projection matrix}{20}
+Use the supplied 2D--3D landmarks to estimate a $3\times4$ camera projection
+matrix. Report reprojection error and discuss degeneracy.
+
+\task{4}{3D object insertion}{15}
+Transform a supplied mesh into the tennis-court world frame, project its
+vertices, and visualize the result. Clearly state the world-frame convention.
+
+\task{5}{Stereo rectification and intrinsic scaling}{5}
+Scale the camera intrinsics consistently with image resizing, compute the
+relative camera pose, and rectify the stereo pair using the supplied helper.
+
+\task{6}{SSD disparity}{20}
+Implement window-based sum-of-squared-differences matching without calling an
+off-the-shelf stereo matcher. Compare with a library baseline.
+
+\task{7}{Analysis}{5}
+Discuss failure modes near occlusions, repetitive texture, image boundaries,
+and low-texture regions. Explain at least two possible improvements.
+
+\section{Deliverables}
+Submit completed starter modules, the requested generated arrays and figures,
+and a PDF report containing derivations, visualizations, metrics, and analysis.
+
+\section{Rubric}
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Component & Points \\
+\midrule
+Homography and compositing & 35 \\
+Projection and object insertion & 35 \\
+Stereo and analysis & 30 \\
+\midrule
+Total & 100 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Submission}
+The Canvas submission shell and exact file manifest will be added before
+release. The deadline is \DueDate.
+
+\end{document}
