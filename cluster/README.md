@@ -35,7 +35,7 @@ If `26fa-cs498sw3-eng` is missing more than 24 hours after course access was ann
 sinfo -p eng-instruction -N -o "%.12N %.8c %.12m %.20G %.30f"
 ```
 
-This displays nodes, CPU cores, host memory, generic resources, and node features. Staff will confirm whether the GPU type should be requested generically as `gpu:1` or with a typed A10 resource.
+This displays nodes, CPU cores, host memory, generic resources, and node features. On August 24, 2026, the GPU nodes reported `gpu:A10:3`; the supplied template therefore requests one typed device with `--gres=gpu:A10:1`.
 
 ## 3. Prepare a working directory
 
@@ -138,4 +138,3 @@ This does not replace the one-running-GPU-job policy. Do not submit multiple sep
 - [Running jobs](https://docs.ncsa.illinois.edu/systems/icc/en/latest/user_guide/running_jobs.html)
 - [Storage](https://docs.ncsa.illinois.edu/systems/icc/en/latest/user_guide/storage_data.html)
 - [Software](https://docs.ncsa.illinois.edu/systems/icc/en/latest/user_guide/software.html)
-

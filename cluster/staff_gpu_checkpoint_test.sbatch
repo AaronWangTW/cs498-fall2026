@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=00:30:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:A10:1
 #SBATCH --output=logs/%x-%j.out
 
 set -euo pipefail
@@ -17,4 +17,3 @@ python3 gpu_checkpoint_test.py \
   --seconds 1200 \
   --checkpoint "logs/gpu-checkpoint-${SLURM_JOB_ID}.pt" \
   --result "logs/gpu-checkpoint-${SLURM_JOB_ID}.json"
-

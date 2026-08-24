@@ -16,7 +16,7 @@ To preserve fair access, could you confirm whether the following limits can be e
 
 Please also confirm:
 
-1. the exact GRES or feature string students should use for one A10 GPU on `eng-instruction`;
+1. whether the live GRES request observed on August 24, 2026, `--gres=gpu:A10:1`, is the preferred request for one A10 GPU;
 2. the partition's configured maximum wall time;
 3. whether a dedicated course software module or shared environment is recommended;
 4. the approved course storage location, quota, retention/purge policy, and access procedure;
@@ -27,4 +27,3 @@ The GPU nodes each have 256 GB host RAM and three A10 GPUs. We proposed a 64 GB 
 Thank you,
 
 CS 498 Machine Perception teaching staff
-

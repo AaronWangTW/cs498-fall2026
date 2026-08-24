@@ -16,7 +16,7 @@ EXPECTED = {
 GPU_LIMITS = {
     "--cpus-per-task": "8",
     "--mem": "64G",
-    "--gres": "gpu:1",
+    "--gres": "gpu:A10:1",
 }
 
 
@@ -62,4 +62,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

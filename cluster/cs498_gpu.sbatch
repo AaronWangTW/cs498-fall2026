@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=00:15:00
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:A10:1
 #SBATCH --output=logs/%x-%j.out
 
 set -euo pipefail
@@ -20,4 +20,3 @@ date --iso-8601=seconds
 
 nvidia-smi
 python3 gpu_smoke_test.py --output "logs/gpu-smoke-${SLURM_JOB_ID}.json"
-

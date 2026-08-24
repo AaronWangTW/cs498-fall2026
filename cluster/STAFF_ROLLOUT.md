@@ -5,9 +5,9 @@ Do not merge or publish the student tutorial until every blocking item is comple
 ## Access and partition discovery
 
 - [ ] Course roster access has propagated for at least one instructor/TA and one test student.
-- [ ] `/projects/illinois/eng/shared/shared/examples/my-accounts-eng` reports `26fa-cs498sw3-eng`.
-- [ ] `sinfo` confirms the `eng-instruction` node count, A10 GRES name, CPU count, memory, and partition wall-time limit.
-- [ ] Staff have recorded whether `--gres=gpu:1` or a typed A10 request is preferred.
+- [ ] `/projects/illinois/eng/shared/shared/examples/my-accounts-eng` reports `26fa-cs498sw3-eng`. It was still missing for Shenlong on August 24, 2026.
+- [x] `sinfo` confirms three 128-core CPU nodes and two 64-core GPU nodes, each with `gpu:A10:3`.
+- [x] The templates request one typed A10 with `--gres=gpu:A10:1`.
 
 ## Smoke tests
 
@@ -30,4 +30,3 @@ Do not merge or publish the student tutorial until every blocking item is comple
 - [ ] Validate every command in a clean login shell.
 - [ ] Merge through normal review into the public course repository.
 - [ ] Add the tutorial to Canvas only after the public repository version is live.
-
