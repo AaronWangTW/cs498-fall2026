@@ -62,14 +62,14 @@ TENNIS_UV = np.array(
 # origin and axes defined in the handout, and keep the A--H order unchanged.
 TENNIS_XY = np.array(
     [
-        [0.0, 0.0],  # A: replace
-        [0.0, 0.0],  # B: replace
-        [0.0, 0.0],  # C: replace
-        [0.0, 0.0],  # D: replace
-        [0.0, 0.0],  # E: replace
-        [0.0, 0.0],  # F: replace
-        [0.0, 0.0],  # G: replace
-        [0.0, 0.0],  # H: replace
+        [-5.485, 0.0],  # A: replace
+        [5.485, 0.0],  # B: replace
+        [-5.485, 23.77],  # C: replace
+        [5.485, 23.77],  # D: replace
+        [-4.115, 0.0],  # E: replace
+        [4.115, 0.0],  # F: replace
+        [-4.115, 23.77],  # G: replace
+        [4.115, 23.77],  # H: replace
     ],
     dtype=float,
 )
@@ -79,13 +79,55 @@ def estimate_homography(xy: np.ndarray, uv: np.ndarray) -> np.ndarray:
     """Return H such that [u, v, 1]^T is proportional to H [x, y, 1]^T.
 
     Replace the identity placeholder with normalized DLT:
-      1. normalize XY and UV separately so each centroid is zero and the mean
-         distance from the origin is sqrt(2);
-      2. build the 2N x 9 homogeneous design matrix;
-      3. use SVD to take its right-null-space vector;
-      4. reshape, denormalize, and choose a stable matrix scale.
     """
-    return np.eye(3)  # Runnable placeholder: replace with your estimate.
+
+    #1. normalize XY and UV separately so each centroid is zero and the mean distance from the origin is sqrt(2);
+    cent_xy = xy.mean(axis=0)
+    norm_xy = xy - cent_xy
+    dist_xy = np.mean(np.sqrt(norm_xy[:,0]**2+norm_xy[:,1]**2))
+    norm_xy = norm_xy / dist_xy * np.sqrt(2)
+
+    cent_uv = uv.mean(axis=0)
+    norm_uv = uv - cent_uv
+    dist_uv = np.mean(np.sqrt(norm_uv[:,0]**2+norm_uv[:,1]**2))
+    norm_uv = norm_uv / dist_uv * np.sqrt(2)
+
+    #2. build the 2N x 9 homogeneous design matrix;
+    N = len(xy)
+    """
+    0 0 0 x y 1 -vx -vy -v
+    x y 1 0 0 0 -ux -uy -u
+    """
+    rows = []
+    for i in range(N):
+        x = norm_xy[i,0]
+        y = norm_xy[i,1]
+        u = norm_uv[i,0]
+        v = norm_uv[i,1]
+        r1 = np.array([0,0,0,x,y,1,-v*x,-v*y,-v])
+        r2 = np.array([x,y,1,0,0,0,-u*x,-u*y,-u])
+        rows.append(r1)
+        rows.append(r2)
+    A = np.vstack(rows)
+
+    #3. use SVD to take its right-null-space vector;
+    U,S,Vh = np.linalg.svd(A,full_matrices=True)
+    rns = Vh[-1,:]
+
+    #4. reshape, denormalize, and choose a stable matrix scale.
+    H = rns.reshape((3,3))
+    s_xy = np.sqrt(2)/dist_xy
+    s_uv = np.sqrt(2)/dist_uv
+    T_xy = np.array([[s_xy,0,-s_xy*cent_xy[0]],
+                     [0,s_xy,-s_xy*cent_xy[1]],
+                     [0,0,1]])
+    T_uv = np.array([[s_uv,0,-s_uv*cent_uv[0]],
+                     [0,s_uv,-s_uv*cent_uv[1]],
+                     [0,0,1]])
+    H = np.linalg.inv(T_uv)@H@T_xy
+    H = H/np.mean(H)
+    
+    return H 
 
 
 def logo_to_image_homography(
@@ -100,9 +142,20 @@ def logo_to_image_homography(
     court_to_image. Include the vertical flip because logo pixel y points down
     while court y points up.
     """
-    del logo_shape, lower_left_xy, size_xy
-    return np.asarray(court_to_image, dtype=float)  # Runnable placeholder.
+    #logo -> court
+    # 0,H -> lower_left_xy
+    # 0,0 -> top left
+    # W,0 -> top right
+    # W,H -> bottom right
+    s_x = size_xy[0] / logo_shape[1] #order switched cuz logo_shape comes in H,W
+    s_y = size_xy[1] / logo_shape[0]
+    # translation gotta be top left to compensate for different direction of y/v
+    # scaling of y negative to flip
+    T = np.array([[s_x,0,lower_left_xy[0]],
+                  [0,-s_y,lower_left_xy[1]+size_xy[1]],
+                  [0,0,1]])
 
+    return court_to_image @ T 
 
 def alpha_blend(foreground_rgba: np.ndarray, background_rgb: np.ndarray) -> np.ndarray:
     """Composite an RGBA foreground over an RGB background.
@@ -111,8 +164,11 @@ def alpha_blend(foreground_rgba: np.ndarray, background_rgb: np.ndarray) -> np.n
     handout. Alpha is the final channel of foreground_rgba and must blend all
     three foreground RGB channels with the matching background pixel.
     """
-    del foreground_rgba
-    return np.asarray(background_rgb, dtype=float).copy()  # Runnable placeholder.
+
+    alpha = foreground_rgba[...,3]
+    alpha = np.expand_dims(alpha, axis=2) #to allow it to apply to all of RGB
+    rgb = foreground_rgba[...,:3]
+    return  alpha * rgb + (1-alpha) * background_rgb # Runnable placeholder.
 
 
 # ------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK --------------------

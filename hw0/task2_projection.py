@@ -36,11 +36,44 @@ def estimate_projection_matrix(xyz: np.ndarray, uv: np.ndarray) -> np.ndarray:
     design matrix using its matching UV pixel, solve the right null space with
     SVD, reshape to 3 x 4, and choose a stable scale.
     """
-    del xyz, uv
+
+    # a lot of the work here is copied from 1A of my own work since I noticed major similarity between them.
+
+    #2. build the 2N x 9 homogeneous design matrix;
+    N = len(xyz)
+    """
+    0 0 0 0 x y z 1 -vx -vy -vz -v
+    x y z 1 0 0 0 0 -ux -uy -uz -u
+    """
+    rows = []
+    for i in range(N):
+        x = xyz[i,0]
+        y = xyz[i,1]
+        z = xyz[i,2]
+        u = uv[i,0]
+        v = uv[i,1]
+        r1 = np.array([0,0,0,0,x,y,z,1,-v*x,-v*y,-v*z,-v])
+        r2 = np.array([x,y,z,1,0,0,0,0,-u*x,-u*y,-u*z,-u])
+        rows.append(r1)
+        rows.append(r2)
+    A = np.vstack(rows)
+
+    #3. use SVD to take its right-null-space vector;
+    U,S,Vh = np.linalg.svd(A,full_matrices=True)
+    rns = Vh[-1,:]
+
+    #4. reshape, denormalize, and choose a stable matrix scale.
+    H = rns.reshape((3,4))
+    H = H/np.mean(H)
+    
+    return H 
+
+    """safe keeping
     intrinsic = np.array([[1000.0, 0.0, 960.0], [0.0, 1000.0, 540.0], [0.0, 0.0, 1.0]])
     rotation = np.diag([1.0, -1.0, -1.0])
     camera_center = np.array([14.0, -15.0, 10.0])
     return intrinsic @ np.column_stack((rotation, -rotation @ camera_center))
+    """
 
 
 # ------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK --------------------
