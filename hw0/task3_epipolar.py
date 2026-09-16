@@ -19,14 +19,50 @@ def estimate_fundamental_matrix(matches: np.ndarray) -> np.ndarray:
     """Estimate a rank-two F from rows (u1, v1, u2, v2), N >= 8.
 
     Replace the runnable placeholder with the normalized eight-point method:
-      1. normalize the points in each view independently;
-      2. build the N x 9 design matrix from (u1, v1, u2, v2);
-      3. solve its right null space with SVD;
-      4. enforce rank two by zeroing the smallest singular value; and
-      5. denormalize and choose a stable scale.
     """
-    del matches
-    return np.array([[0.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]])
+    # 1. normalize the points in each view independently;
+    uv1 = matches[:,:2]
+    cent1 = uv1.mean(axis=0)
+    norm1 = uv1 - cent1
+    dist1 = np.mean(np.sqrt(norm1[:,0]**2+norm1[:,1]**2))
+    norm1 = norm1 / dist1
+
+    uv2 = matches[:,2:]
+    cent2 = uv2.mean(axis=0)
+    norm2 = uv2 - cent2
+    dist2 = np.mean(np.sqrt(norm2[:,0]**2+norm2[:,1]**2))
+    norm2 = norm2 / dist2
+    
+    # 2. build the N x 9 design matrix from (u1, v1, u2, v2);
+    N = len(matches)
+    rows = []
+    for i in range(N):
+        u1 = norm1[i,0]
+        v1 = norm1[i,1]
+        u2 = norm2[i,0]
+        v2 = norm2[i,1]
+        r = np.array([u2*u1,u2*v1,u2,v2*u1,v2*v1,v2,u1,v1,1])
+        rows.append(r)
+    A = np.vstack(rows)
+    # 3. solve its right null space with SVD;
+    U,S,Vh = np.linalg.svd(A,full_matrices=True)
+    rns = Vh[-1,:]
+    # 4. enforce rank two by zeroing the smallest singular value; and
+    F = rns.reshape((3,3))
+    U,S,Vh = np.linalg.svd(F,full_matrices=True)
+    Sig = np.diag([S[0],S[1],0])
+    H = U @ Sig @ Vh
+    # 5. denormalize and choose a stable scale.
+    T_1 = np.array([[1/dist1,0,-cent1[0]/dist1],
+                        [0,1/dist1,-cent1[1]/dist1],
+                        [0,0,1]])
+    T_2 = np.array([[1/dist2,0,-cent2[0]/dist2],
+                        [0,1/dist2,-cent2[1]/dist2],
+                        [0,0,1]])
+    H = T_2.T@H@T_1
+    H = H/np.mean(H)
+        
+    return H 
 
 
 # ------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK --------------------
