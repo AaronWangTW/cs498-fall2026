@@ -62,14 +62,14 @@ TENNIS_UV = np.array(
 # origin and axes defined in the handout, and keep the A--H order unchanged.
 TENNIS_XY = np.array(
     [
-        [-5.485, 0.0],  # A: replace
-        [5.485, 0.0],  # B: replace
-        [-5.485, 23.77],  # C: replace
-        [5.485, 23.77],  # D: replace
-        [-4.115, 0.0],  # E: replace
-        [4.115, 0.0],  # F: replace
-        [-4.115, 23.77],  # G: replace
-        [4.115, 23.77],  # H: replace
+        [-5.485, 0.0],  # A
+        [5.485, 0.0],  # B
+        [-5.485, 23.77],  # C
+        [5.485, 23.77],  # D
+        [-4.115, 0.0],  # E
+        [4.115, 0.0],  # F
+        [-4.115, 23.77],  # G
+        [4.115, 23.77],  # H
     ],
     dtype=float,
 )
@@ -125,7 +125,7 @@ def estimate_homography(xy: np.ndarray, uv: np.ndarray) -> np.ndarray:
                      [0,s_uv,-s_uv*cent_uv[1]],
                      [0,0,1]])
     H = np.linalg.inv(T_uv)@H@T_xy
-    H = H/np.mean(H)
+    H = H/H[2,2]
     
     return H 
 
