@@ -64,7 +64,7 @@ def estimate_projection_matrix(xyz: np.ndarray, uv: np.ndarray) -> np.ndarray:
 
     #4. reshape, denormalize, and choose a stable matrix scale.
     H = rns.reshape((3,4))
-    H = H/np.mean(H)
+    H = H/H[2,2]
     
     return H 
 
