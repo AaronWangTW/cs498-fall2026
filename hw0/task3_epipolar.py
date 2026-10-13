@@ -60,7 +60,7 @@ def estimate_fundamental_matrix(matches: np.ndarray) -> np.ndarray:
                         [0,1/dist2,-cent2[1]/dist2],
                         [0,0,1]])
     H = T_2.T@H@T_1
-    H = H/np.mean(H)
+    H = H/H[2,2]
         
     return H 
 
