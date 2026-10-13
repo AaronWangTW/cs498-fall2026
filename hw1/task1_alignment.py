@@ -34,8 +34,35 @@ def fit_rigid_svd(source: np.ndarray, target: np.ndarray) -> np.ndarray:
     ``source`` and ``target`` are homogeneous [4, N] point matrices. Lecture
     notation is used directly: P_target = T_source_to_target @ P_source.
     """
-    del target
-    return np.eye(4)
+    # Center both point sets
+    # We have done this in previous assignment
+    S_cent = np.mean(source[:3],axis=1,keepdims=True) # will use later so keep it here instead of in-line
+    S_centered = np.copy(source)
+    S_centered[:3] = S_centered[:3] - S_cent
+
+    T_cent = np.mean(target[:3],axis=1,keepdims=True)
+    T_centered = np.copy(target)
+    T_centered[:3] = T_centered[:3] - T_cent
+
+    # form their 3x3 cross-covariance
+    # Just following the equations in the handout
+    H = S_centered[:3] @ T_centered[:3].T
+
+    # solve for rotation with SVD
+    # Just following the equations in the handout
+    U,Sig,V_T = np.linalg.svd(H)
+
+    # correct a reflection if necessary
+    # Just following the equations in the handout
+    D = np.diag([1,1,np.linalg.det(V_T.T@U.T)])
+    R = V_T.T @ D @ U.T
+    t = T_cent - R @ S_cent
+
+    # recover translation
+    result = np.eye(4)
+    result[:3,:3] = R
+    result[:3,3] = t.flatten()
+    return result
 
 
 def nearest_correspondences(
@@ -48,12 +75,13 @@ def nearest_correspondences(
     Transpose xyz to [N, 3] only for the SciPy cKDTree boundary, query one
     neighbor per source column, and retain distances <= ``max_distance``.
     """
-    count = min(source.shape[1], target.shape[1])
-    source_ids = np.arange(count)
-    target_ids = np.arange(count)
-    distances = np.linalg.norm(source[:3, :count] - target[:3, :count], axis=0)
+    # build tree
+    tree = cKDTree(target[:3].T)
+    # query
+    distances, target_ids = tree.query(source[:3].T)
+    # retain distances
     keep = distances <= max_distance
-    return source_ids[keep], target_ids[keep], distances[keep]
+    return np.arange(source.shape[1])[keep],target_ids[keep],distances[keep]
 
 
 # ------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK --------------------
