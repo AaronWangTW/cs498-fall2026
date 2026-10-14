@@ -128,7 +128,7 @@ def relative_trajectory_error(
         E = np.linalg.inv(dT) @ dT_cap
         trans_err.append(np.linalg.norm(E[0:3,3],ord=2))
         r_err = np.arccos(np.clip((np.trace(E[0:3,0:3])-1)/2,-1,1))
-        rot_err.append(r_err)
+        rot_err.append(np.degrees(r_err)) # rotation error in degrees
     return np.array(trans_err), np.array(rot_err)
 
 
