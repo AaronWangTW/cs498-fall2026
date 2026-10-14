@@ -98,7 +98,13 @@ def chain_relative_poses(relative_transforms: np.ndarray) -> np.ndarray:
     Use T_(L_i+1 -> W) = T_(L_i -> W) @ T_(L_i+1 -> L_i).
     Do not add pose components.
     """
-    return np.repeat(np.eye(4)[None], len(relative_transforms) + 1, axis=0)
+    T_pose = np.eye(4)
+    result = [T_pose.copy()]
+    for T_r in relative_transforms:
+        # Use T_(L_i+1 -> W) = T_(L_i -> W) @ T_(L_i+1 -> L_i)
+        T_pose = T_pose @ T_r
+        result.append(T_pose.copy())
+    return np.array(result)
 
 
 def relative_trajectory_error(
@@ -112,9 +118,18 @@ def relative_trajectory_error(
     T_(L_i+delta -> W) for the estimate and reference, then measure the error
     transform using the equations in the handout.
     """
-    del ground_truth_poses
     count = max(len(estimated_poses) - delta, 0)
-    return np.zeros(count), np.zeros(count)
+    trans_err = []
+    rot_err = []
+    for i in range(count):
+        # following the equations listed on the handout
+        dT_cap = np.linalg.inv(estimated_poses[i]) @ estimated_poses[i+delta]
+        dT = np.linalg.inv(ground_truth_poses[i]) @ ground_truth_poses[i+delta]
+        E = np.linalg.inv(dT) @ dT_cap
+        trans_err.append(np.linalg.norm(E[0:3,3],ord=2))
+        r_err = np.arccos(np.clip((np.trace(E[0:3,0:3])-1)/2,-1,1))
+        rot_err.append(r_err)
+    return np.array(trans_err), np.array(rot_err)
 
 
 # ------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK --------------------
