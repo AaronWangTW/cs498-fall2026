@@ -42,7 +42,38 @@ def ransac_rigid(
     Keep the first hypothesis on ties; return identity/all-false if none has
     three inliers. Recompute the final mask after refitting (residual <= threshold).
     """
-    del target, threshold, max_trials, rng
+    best_inliers_mask = np.zeros(source.shape[1], dtype=bool)
+    # each trial
+    for t in range(max_trials):
+        # sample three distinct pairs
+        samples = rng.choice(source.shape[1], size=3, replace=False)
+        # skip nearly collinear samples
+        v1 = source[:3,samples[0]] - source[:3,samples[1]]
+        v2 = source[:3,samples[1]] - source[:3,samples[2]]
+        u1 = target[:3,samples[0]] - target[:3,samples[1]]
+        u2 = target[:3,samples[1]] - target[:3,samples[2]]
+        # Treat a cross-product norm below 1e-8 in either triple as degenerate
+        if np.linalg.norm(np.cross(v1,v2)) < 1e-8 or np.linalg.norm(np.cross(u1,u2)) < 1e-8:
+            continue
+        # fit with task 1A
+        hypothesis = fit_rigid_svd(source[:,samples],target[:,samples])
+        # retain the hypothesis with the most inliers
+        # Score a hypothesis after mapping the homogeneous [4, N] source columns into the target frame
+        transformed = transform_points(hypothesis,source)
+        residual = np.linalg.norm(transformed[:3,:]-target[:3,:],axis=0)
+        mask = residual <= threshold
+        # Keep the first hypothesis on ties
+        if np.count_nonzero(mask) > np.count_nonzero(best_inliers_mask):
+            best_inliers_mask = mask
+
+    # refit using all inliers from best hypothesis
+    if np.count_nonzero(best_inliers_mask) >= 3:
+        best_fit = fit_rigid_svd(source[:,best_inliers_mask],target[:,best_inliers_mask])
+        transformed = transform_points(best_fit,source)
+        residual = np.linalg.norm(transformed[:3,:]-target[:3,:],axis=0)
+        mask = residual <= threshold
+        return best_fit, mask
+    # return identity/all-false if none has three inliers.
     return np.eye(4), np.zeros(source.shape[1], dtype=bool)
 
 
