@@ -50,8 +50,46 @@ def icp(
     without re-matching, then compare absolute change with the previous value.
     The transform trace begins with identity and includes every update.
     """
-    del target, max_iterations, max_correspondence_distance, trim_fraction, tolerance
-    return np.eye(4), np.empty(0), np.eye(4)[None]
+    # following the steps from the handout
+    # For each iteration
+    rmse_history = []
+    T = np.eye(4)
+    transform_history = [T.copy()]
+    for i in range(max_iterations):
+        # transform the original source using the current estimate
+        current = transform_points(T,source)
+        # call your Task 1 nearest-neighbor function
+        # find nearest neighbors with Task 1B
+        current_ids,target_ids,distances = nearest_correspondences(current,target,max_distance=max_correspondence_distance)
+        # retain the lowest-residual trim_fraction matches
+        # Keep max(3, ceil(trim_fraction * accepted_count)) matches. If fewer than three are accepted, stop.
+        if len(distances) < 3:
+            break
+        keep_cnt = max(3, int(np.ceil(trim_fraction * len(distances))))
+        order = np.argsort(distances)
+        current_kept = current[:,current_ids[order[:keep_cnt]]]
+        target_kept = target[:,target_ids[order[:keep_cnt]]]
+
+        # fit an incremental transform with Task 1A and left-compose it; and
+        # If the current estimate is T_source_to_target and the fitted incremental correction is delta_T, 
+        # the new estimate is delta_T @ T_source_to_target.
+        delta_T = fit_rigid_svd(current_kept,target_kept)
+        T = delta_T @ T
+
+        # stop when the absolute RMSE change is below tolerance or the iteration limit is reached.
+        """Record post-update RMSE on the retained pairs,
+        without re-matching, then compare absolute change with the previous value.
+        The transform trace begins with identity and includes every update."""
+        transform_history.append(T.copy())
+        err = transform_points(delta_T,current_kept)[:3,:] - target_kept[:3,:]
+        rmse = np.sqrt(np.mean(np.sum(err**2,axis=0)))
+        
+        if i != 0 and np.abs(rmse - rmse_history[-1]) < tolerance:
+            rmse_history.append(rmse)
+            break
+        rmse_history.append(rmse)
+    
+    return T, np.array(rmse_history), np.array(transform_history)
 
 
 def chain_relative_poses(relative_transforms: np.ndarray) -> np.ndarray:
