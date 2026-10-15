@@ -38,9 +38,20 @@ def points_to_voxels(
     ``origin`` is [3]. Divide xyz by w, transpose to [N, 3], use
     ``torch.floor``, cast to ``torch.long``, and do not clip.
     """
-    return torch.zeros(
-        (points.shape[1], 3), dtype=torch.long, device=points.device
-    )
+    p_cleaned = points[:3]
+    # Divide xyz by w
+    p_cleaned = p_cleaned / points[3]
+    # following equation
+    v = p_cleaned - origin.reshape((3,1))
+    v = v / voxel_size
+    v = torch.floor(v)
+
+    # transpose to [N, 3]
+    v = v.T
+    # cast to ``torch.long``
+    v = v.long()
+
+    return v
 
 
 def fuse_voxel_evidence(
@@ -58,17 +69,29 @@ def fuse_voxel_evidence(
     Accumulate evidence in float64 so exact class-count ties remain stable. Do
     not let a later observation overwrite earlier evidence.
     """
+    # Given starter code
     shape = torch.tensor(grid_shape, dtype=torch.long, device=voxel_indices.device)
+    # Reject out-of-bounds indices
     valid = ((voxel_indices >= 0) & (voxel_indices < shape)).all(dim=1)
+    # merge repeated coordinates
+    # Return lexicographically sorted coordinates
     coordinates, inverse = torch.unique(
         voxel_indices[valid], dim=0, sorted=True, return_inverse=True
     )
     counts = torch.bincount(inverse, minlength=len(coordinates))
+    # end of starter code
+    # Convert to float64 BEFORE log_softmax
+    safe_logits = raw_logits.to(torch.float64)
+    # Use ``torch.log_softmax`` for stable evidence
+    logits_soft = torch.log_softmax(safe_logits[valid],1)
+    # initialization given by starter code
     log_evidence = torch.zeros(
         (len(coordinates), raw_logits.shape[1]),
         dtype=torch.float64,
         device=raw_logits.device,
     )
+    # accumulate with ``index_add_`` or an equivalent PyTorch operation
+    log_evidence.index_add_(0, inverse, logits_soft)
     return coordinates, counts > 0, log_evidence, counts
 
 
