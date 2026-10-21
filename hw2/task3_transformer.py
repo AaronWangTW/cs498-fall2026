@@ -47,7 +47,27 @@ class SelfAttention(nn.Module):
         https://arxiv.org/abs/1706.03762.
         """
         # ----------- SelfAttention.forward: INSERT YOUR CODE BELOW -----------
-        return torch.zeros_like(features)
+        # following guidance:
+        B,N,_ = features.shape
+        # features (B,N,96) -> packed qkv (B,N,288)
+        packed = self.qkv(features)
+        # Q, K, V each (B,4,N,24)
+        q, k, v = packed.split(self.num_heads * self.head_width, dim=-1) # now (B,N,96) x 3
+        q = q.reshape((B,N,self.num_heads,self.head_width))
+        k = k.reshape((B,N,self.num_heads,self.head_width))
+        v = v.reshape((B,N,self.num_heads,self.head_width)) # now (B,N,4,24)
+        q = q.permute((0,2,1,3))
+        k = k.permute((0,2,1,3))
+        v = v.permute((0,2,1,3)) # now right
+        # scaled dot-product attention (B,4,N,24)
+        drop = self.dropout if self.training else 0.0 # "training-dependent dropout probability" so disabled outside of training
+        attn = F.scaled_dot_product_attention(q,k,v,dropout_p=drop)
+        # merge heads (B,N,96)
+        attn = attn.permute((0,2,1,3))
+        attn = attn.reshape((B,N,self.num_heads * self.head_width))
+        # output projection (B,N,96)
+        res = self.output(attn)
+        return res
         # ------------ DO NOT MODIFY CODE OUTSIDE THIS BLOCK --------------
 
 
@@ -96,8 +116,24 @@ class TransformerSegmenter(nn.Module):
         Preserve point order and return raw logits, not probabilities.
         """
         # ------- TransformerSegmenter.forward: INSERT YOUR CODE BELOW -------
-        empty = xyz.new_zeros((*xyz.shape[:2], self.width))
-        return self.head(empty)
+        # following guidance here
+        # concatenate xyz/rgb (B,N,6)
+        concat = torch.cat([xyz,rgb],dim=-1)
+        # input Linear 6->96 (B,N,96)
+        # "map the six input channels with input_projection"
+        lin_out = self.input_projection(concat)
+        # + position MLP xyz 3->96->96 (B,N,96)
+        pos = self.position_mlp(xyz)
+        out1 = lin_out + pos
+        # -> 4 pre-LN TransformerBlocks, each preserving (B,N,96)
+        #    [4-head attention; MLP 96->384->96; two residual connections] 
+        for block in self.blocks:
+            out1 = block(out1)
+
+        # classify every point with head
+        res = self.head(out1)
+        return res
+
         # ------------ DO NOT MODIFY CODE OUTSIDE THIS BLOCK --------------
 
 
@@ -114,7 +150,7 @@ def segmentation_loss(logits, labels, class_weights):
     Flatten only the batch and point axes before calling F.cross_entropy.
     """
     # ------------ segmentation_loss: INSERT YOUR CODE BELOW ------------
-    return F.cross_entropy(logits.flatten(0, 1), labels.flatten())
+    return F.cross_entropy(logits.flatten(0, 1), labels.flatten(),weight=class_weights,reduction="mean")
     # ------------ DO NOT MODIFY CODE OUTSIDE THIS BLOCK --------------
 
 
