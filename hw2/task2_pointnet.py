@@ -51,9 +51,27 @@ class PointNetSegmenter(nn.Module):
         https://arxiv.org/abs/1612.00593.
         """
         # ---------------- Task 2: INSERT YOUR CODE BELOW -----------------
-        batch, points, _ = xyz.shape
-        empty = xyz.new_zeros((batch, 512, points))
-        return self.classifier(empty).transpose(1, 2)
+        B, N, _ = xyz.shape
+        # following handout hints/instructions and diagram
+        # concatenate XYZ+RGB
+        points = torch.cat([xyz,rgb],dim=-1) # concatenate horizontally
+        # transpose (B,N,6) -> transpose (B,6,N)
+        points = points.transpose(1,2)
+        # shared 1x1 Conv1d 6->64->128->256
+        out1 = self.point_mlp(points)
+        # max over N (B,256,1) 
+        out2 = torch.max(out1,dim=2,keepdim=True).values #keepdim for easier broadcasting
+        # -> repeat (B,256,N)
+        out2 = out2.expand(-1,-1,N)
+        # concatenate local+global (B,512,N)
+        out3 = torch.cat([out1,out2],dim=1)
+        # shared 1x1 Conv1d 512->128->C
+        out4 = self.classifier(out3)
+        # transpose logits (B,N,C).
+        final = out4.transpose(1,2)
+
+        return final
+        
         # ------------- DO NOT MODIFY CODE OUTSIDE THIS BLOCK -------------
 
 

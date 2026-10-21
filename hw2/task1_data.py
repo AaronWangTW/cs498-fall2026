@@ -35,7 +35,8 @@ def augment_points(points, rng):
     # small Gaussian jitter
     jitter = rng.normal(0.0,0.01,size=res.shape) # "small" jitter, again not sure if too small or too large
     res = res + jitter
-    return res
+    return res.astype(points.dtype, copy=False) # Discovered a type mismatch issue when implementing task2 (test passed but real run doesn't)
+    # debugging seems to trace back here, so return with type casting to make sure it's right
     # ------------ DO NOT MODIFY CODE OUTSIDE THIS BLOCK --------------
 
 
