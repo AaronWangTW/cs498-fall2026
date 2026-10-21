@@ -19,7 +19,23 @@ from hw2_utils import PART_NAMES, load_split, plot_point_clouds, write_json
 def augment_points(points, rng):
     """Apply a random z rotation, scale change, and coordinate noise."""
     # ---------------- Task 1B: INSERT YOUR CODE BELOW ----------------
-    return points.copy()
+    res = points.copy()
+    # random rotation
+    angle = rng.uniform(0.0,2.0*np.pi) # equivalent of 0 to 360 degrees but in radian
+    # standard rotation matrix around z-axis (easily found online)
+    R = np.array([
+        [np.cos(angle),-np.sin(angle),0],
+        [np.sin(angle),np.cos(angle),0],
+        [0,0,1]
+    ])
+    res = res @ R.T # different from what's commonly used cuz different points array layout, but this preserves the shape
+    # small global scale
+    scale = rng.uniform(0.95,1.05) # "small" scale, not sure of the exact best values to use, but these should be small enough?
+    res = scale * res
+    # small Gaussian jitter
+    jitter = rng.normal(0.0,0.01,size=res.shape) # "small" jitter, again not sure if too small or too large
+    res = res + jitter
+    return res
     # ------------ DO NOT MODIFY CODE OUTSIDE THIS BLOCK --------------
 
 
@@ -31,7 +47,14 @@ def augment_points(points, rng):
 def compute_confusion_matrix(prediction, target, num_classes):
     """Return a matrix with ground-truth rows and prediction columns."""
     # ---------------- Task 1C: INSERT YOUR CODE BELOW ----------------
-    return np.zeros((num_classes, num_classes), dtype=np.int64)
+    M = np.zeros((num_classes, num_classes), dtype=np.int64)
+    # flatten both arrays
+    t = target.flatten()
+    p = prediction.flatten()
+    # count each (target, prediction) pair
+    for i in range(len(t)):
+        M[t[i],p[i]]+=1
+    return M
     # ------------ DO NOT MODIFY CODE OUTSIDE THIS BLOCK --------------
 
 
@@ -43,7 +66,17 @@ def compute_confusion_matrix(prediction, target, num_classes):
 def iou_from_confusion(confusion):
     """Return one IoU per class; use NaN when the union is zero."""
     # ---------------- Task 1C: INSERT YOUR CODE BELOW ----------------
-    return np.zeros(len(confusion), dtype=np.float64)
+    # union is ground-truth count + predicted count - intersection.
+    # ground-truth count + predicted count = row + col counts 
+    # intersection = diagonal
+    col = np.sum(confusion,axis=0)
+    row = np.sum(confusion,axis=1)
+    diag = np.diagonal(confusion)
+    union = col + row - diag
+    # Use np.nan for union 0, so initialize first then fill in with conditional division (cleanest way I can think of)
+    res = np.full(len(confusion), np.nan, dtype=np.float64)
+    np.divide(diag, union, out=res, where=(union != 0))
+    return res
     # ------------ DO NOT MODIFY CODE OUTSIDE THIS BLOCK --------------
 
 
