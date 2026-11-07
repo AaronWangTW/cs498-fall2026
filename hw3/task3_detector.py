@@ -75,7 +75,17 @@ class CenterDetector(nn.Module):
         Then apply every prediction head to the final `[B,128,100,88]` map.
         """
         # ----------------------- Task 3A Modify your code below -----------------
-        features = bev.new_zeros((bev.shape[0], 128, bev.shape[2] // 4, bev.shape[3] // 4))
+        features = bev
+        # Follow the exact left-to-right architecture declared in `__init__`
+        features = self.stem(features)
+        features = self.block1(features)
+        features = self.block2(features)
+        features = self.down1(features)
+        features = self.block3(features)
+        features = self.block4(features)
+        features = self.down2(features)
+        features = self.block5(features)
+        features = self.block6(features)
         return {name: head(features) for name, head in self.heads.items()}
         # ---------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK ----------------
 
@@ -88,7 +98,13 @@ def focal_loss(probability, target):
     number of positive centers, or return only the negative term if none exist.
     """
     # ----------------------- Task 3B Modify your code below -----------------
-    return F.binary_cross_entropy(probability, target)
+    # following formula from handout
+    H1_mask = target == 1
+    negative_mask = target < 1
+    positive_loss = torch.sum(((1-probability[H1_mask])**2)*torch.log(probability[H1_mask]))
+    negative_loss = torch.sum(((1-target[negative_mask])**4)*(probability[negative_mask]**2)*torch.log(1-probability[negative_mask]))
+    N_pos = torch.sum(H1_mask)
+    return -(1/torch.clamp(N_pos,min=1))*(positive_loss+negative_loss)
     # ---------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK ----------------
 
 
@@ -100,7 +116,19 @@ def regression_l1(prediction_map, target, indices, mask):
     number of valid objects (not by the number of regression channels).
     """
     # ----------------------- Task 3C Modify your code below -----------------
-    return (prediction_map * 0.0).sum()
+    # following handout
+    # use gather_map to gather a dense prediction map at the target center indices
+    gathered = gather_map(prediction_map,indices)
+    # calculate absolute error for summing later
+    err = torch.abs(gathered - target)
+    # apply the object mask
+    err = err * mask.unsqueeze(-1) #unsqueeze to match dimension/allow auto casting to all calculations
+    # sum absolute error
+    err = torch.sum(err)
+    # divide by the number of valid objects
+    N = torch.sum(mask)
+    err = err / torch.clamp(N,min=1)
+    return err
     # ---------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK ----------------
 
 

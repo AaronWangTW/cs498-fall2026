@@ -23,7 +23,15 @@ from hw3_utils import (
 def suppress_nonmaxima(heatmap: torch.Tensor, kernel: int = 3) -> torch.Tensor:
     """Keep only local maxima in a `[B,C,H,W]` probability heatmap."""
     # ----------------------- Task 4A Modify your code below -----------------
-    return heatmap
+    # handout:
+    # max-pool the sigmoid heatmap with kernel 3, stride 1, and padding 1, then
+    # keep only pixels equal to their local maximum
+    
+    # max-pool heatmap
+    res = F.max_pool2d(heatmap,kernel_size=kernel,stride=1,padding=1)
+    # keep only pixels equal to their local maximum
+    res = heatmap * (heatmap == res).float() #heatmap == res -> pixel equal to max
+    return res
     # ---------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK ----------------
 
 
@@ -52,12 +60,61 @@ def decode_predictions(predictions: dict[str, torch.Tensor], score_threshold=0.0
     """
     # ----------------------- Task 4B Modify your code below -----------------
     batch = predictions["heatmap"].shape[0]
-    return [
-        {"boxes": np.zeros((0, 7), dtype=np.float32),
-         "scores": np.zeros(0, dtype=np.float32),
-         "classes": np.zeros(0, dtype=np.int64)}
-        for _ in range(batch)
-    ]
+
+    # apply sigmoid
+    heatmap = torch.sigmoid(predictions["heatmap"])
+    # suppress_nonmaxima
+    heatmap = suppress_nonmaxima(heatmap)
+    # select the top-k centers
+    scores, flat_indices, class_ids, rows, columns = topk_centers(heatmap,topk)
+    # gather regression values (along with other values that will be used later for reconstruction)
+    reg = gather_map(predictions["reg"],flat_indices)
+    height = gather_map(predictions["height"],flat_indices)
+    dims = gather_map(predictions["dims"],flat_indices)
+    rot = gather_map(predictions["rot"],flat_indices)
+    # add sub-cell offsets
+    u = columns.float() + reg[:,:,0]
+    v = rows.float() + reg[:,:,1] # similar to task2 but with diff dimensions
+    # convert output-grid locations back to metric LiDAR coordinates
+    # equation in handout
+    x = X_MIN + u*OUTPUT_RESOLUTION
+    y = Y_MIN + (OUT_H - v) * OUTPUT_RESOLUTION
+    # Exponentiate log-dimensions and recover yaw with `atan2(sin,cos)`
+    z = height[:,:,0]
+    dims = torch.exp(dims)
+    yaw = torch.atan2(rot[:, :, 0], rot[:, :, 1])
+    # Finally apply score filtering and rotated NMS.
+    # first need to build the actual boxes for the output
+    boxes = torch.cat(
+        [x.unsqueeze(-1), # x
+         y.unsqueeze(-1), # y
+         z.unsqueeze(-1), # z
+         dims, # l, w, h
+         yaw.unsqueeze(-1)], # yaw
+        dim=-1
+    )
+    res = []
+    # process per batch
+    for b in range(batch):
+        # filter by score
+        valid = scores[b] >= score_threshold
+        curr_boxes = boxes[b][valid]
+        curr_scores = scores[b][valid]
+        curr_classes = class_ids[b][valid]
+        # rotated NMS
+        # need to convert to np as required by provided helper
+        # found method here: https://stackoverflow.com/questions/49768306/pytorch-tensor-to-numpy-array
+        np_boxes = curr_boxes.detach().cpu().numpy()
+        np_scores = curr_scores.detach().cpu().numpy()
+        kept = rotated_nms(np_boxes,np_scores)
+
+        res.append({
+            "boxes": np_boxes[kept],
+            "scores": np_scores[kept],
+            "classes": curr_classes[kept].detach().cpu().numpy()
+        })
+    
+    return res
     # ---------------------- DO NOT MODIFY CODE OUTSIDE THE BLOCK ----------------
 
 
